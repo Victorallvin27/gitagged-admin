@@ -7,6 +7,7 @@ import {
   updateCategory,
   deleteCategory,
 } from '@/lib/categories';
+import { uploadCategoryImage } from '@/lib/upload';
 
 export default function CategoriesPage() {
   const [categories, setCategories] = useState<any[]>([]);
@@ -25,14 +26,21 @@ export default function CategoriesPage() {
   const [form, setForm] = useState({
     name: '',
     parentId: '' as string | '',
+    image: '' as string | '',
   });
 
-  const save = async () => {
-    if (!form.name.trim()) return;
+  const isFormValid = () => {
+    if (!form.name.trim()) return false;
+    if (form.parentId === null) return false;
+    return true;
+  };
 
+  const save = async () => {
+    if (!isFormValid()) return;
     const payload = {
       name: form.name,
       parentId: form.parentId || null,
+      image: form.image || null,
     };
 
     if (editingId) {
@@ -47,7 +55,8 @@ export default function CategoriesPage() {
 
   const reset = () => {
     setEditingId(null);
-    setForm({ name: '', parentId: '' });
+    setForm({ name: '', parentId: '', image: '' });
+    setImageInputKey(prev => prev + 1);
   };
 
   const edit = (cat: any) => {
@@ -55,6 +64,7 @@ export default function CategoriesPage() {
     setForm({
       name: cat.name,
       parentId: cat.parentId || '',
+      image: cat.image || '',
     });
   };
 
@@ -64,54 +74,75 @@ export default function CategoriesPage() {
     loadCategories();
   };
 
+  const [imageInputKey, setImageInputKey] = useState(0);
+
   return (
     <div className="bg-white border rounded-xl p-6 mb-8">
       <h1 className="text-2xl font-bold mb-6">Categories</h1>
 
       {/* FORM */}
-        <div className="grid grid-cols-2 gap-4 items-center">
-          {/* Name */}
-          <label className="font-medium">Category Name</label>
-          <input
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            className="border rounded-lg px-4 py-2"
-          />
+      <div className="grid grid-cols-2 gap-4 items-center">
+        {/* Name */}
+        <label htmlFor="categoryName" className="font-medium">Category Name</label>
+        <input
+          id="categoryName"
+          value={form.name}
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
+          className="border rounded-lg px-4 py-2"
+        />
 
-          {/* Parent */}
-          <label className="font-medium">Parent Category</label>
-          <select
-            value={form.parentId}
-            onChange={(e) =>
-              setForm({ ...form, parentId: e.target.value })
-            }
-            className="border rounded-lg px-4 py-2"
-          >
-            <option value="">None (Top Level)</option>
-            {categories.map((c) => (
-              <option key={c._id} value={c._id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+        {/* Parent */}
+        <label className="font-medium">Parent Category</label>
+        <select
+          value={form.parentId}
+          onChange={(e) =>
+            setForm({ ...form, parentId: e.target.value })
+          }
+          className="border rounded-lg px-4 py-2"
+        >
+          <option value="">Select Parent Category</option>
+          {categories.map((c) => (
+            <option key={c._id} value={c._id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
 
-          <div></div>
-          <button
-            onClick={save}
-            className="bg-indigo-600 text-white px-6 py-2 rounded-lg"
-          >
-            {editingId ? 'Update Category' : 'Add Category'}
-          </button>
-        </div>
+        {/* Image Upload */}
+        <label className="font-medium">Category Image</label>
+
+        <input
+          key={imageInputKey}
+          type="file"
+          accept="image/*"
+          className="border p-2 rounded w-full"
+          onChange={async (e) => {
+            if (!e.target.files?.[0]) return;
+            const res = await uploadCategoryImage(e.target.files[0]);
+            setForm(prev => ({
+              ...prev,
+              image: res.data.url,
+            }));
+          }}
+        />
 
         <br></br>
+        <button
+          onClick={save}
+          className="bg-indigo-600 text-white px-6 py-2 rounded-lg"
+        >
+          {editingId ? 'Update Category' : 'Add Category'}
+        </button>
+      </div>
+
+      <br></br>
 
       {/* LIST */}
       <table className="w-full border">
         <thead>
           <tr className="bg-gray-100">
-            <th className="border p-2">Sub Category</th>
             <th className="border p-2">Category</th>
+            <th className="border p-2">Sub Category</th>
             <th className="border p-2">Actions</th>
           </tr>
         </thead>

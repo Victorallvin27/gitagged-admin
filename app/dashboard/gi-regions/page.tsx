@@ -8,17 +8,14 @@ import {
   deleteRegion,
 } from '@/lib/gi-regions';
 import { getCategories } from '@/lib/categories';
+import { uploadGiRegionImage } from '@/lib/upload';
 
 export default function GIRegionsPage() {
   const [regions, setRegions] = useState<any[]>([]);
-  // const [form, setForm] = useState({
-  //   name: '',
-  //   state: '',
-  //   description: '',
-  // });
   const [form, setForm] = useState({
     name: '',
     state: '',
+    image: '',
     description: '',
     categories: [] as string[],
   });
@@ -27,16 +24,7 @@ export default function GIRegionsPage() {
 
   const [categories, setCategories] = useState<any[]>([]);
   const [showCategories, setShowCategories] = useState(false);
-
-
-  // useEffect(() => {
-  //   load();
-  // }, []);
-
-  // const load = async () => {
-  //   const res = await getRegions();
-  //   setRegions(res.data);
-  // };
+  const [imageInputKey, setImageInputKey] = useState(0);
 
   useEffect(() => {
     load();
@@ -51,9 +39,20 @@ export default function GIRegionsPage() {
     setCategories(c.data);
   };
 
+  const isFormValid = () => {
+    if (!form.name.trim()) return false;
+    if (!form.state.trim()) return false;
+    if (!form.description.trim()) return false;
+    if (form.categories.length === 0) return false;
+
+    return true;
+  };
 
   const save = async () => {
-    if (!form.name.trim()) return;
+    if (!isFormValid()) {
+      alert('Please fill all required fields correctly');
+      return;
+    }
 
     if (editingId) {
       await updateRegion(editingId, form);
@@ -61,8 +60,9 @@ export default function GIRegionsPage() {
       await createRegion(form);
     }
 
-    setForm({ name: '', state: '', description: '', categories });
+    setForm({ name: '', state: '', description: '', image: '', categories: [] });
     setEditingId(null);
+    setImageInputKey(prev => prev + 1);
     load();
   };
 
@@ -71,6 +71,7 @@ export default function GIRegionsPage() {
       name: r.name || '',
       state: r.state || '',
       description: r.description || '',
+      image: r.image || '',
       categories: r.categories || [],
     });
     setEditingId(r._id);
@@ -83,84 +84,11 @@ export default function GIRegionsPage() {
   };
 
   return (
-    // <div className="p-6 max-w-4xl center mx-auto">
-    //   <h1 className="text-2xl font-bold mb-4">GI Regions</h1>
-
-    //   {/* Form */}
-    //   <div className="grid grid-cols-3 gap-2 mb-6">
-    //     <label htmlFor='regionName'>Region Name :</label>
-    //     <input
-    //       id='regionName'
-    //       // placeholder="Region name"
-    //       value={form.name}
-    //       onChange={(e) => setForm({ ...form, name: e.target.value })}
-    //       className="border p-2 rounded"
-    //     />
-    //     <br></br>
-    //     <label htmlFor='stateName'>State :</label>
-    //     <input
-    //     id='stateName'
-    //       // placeholder="State"
-    //       value={form.state}
-    //       onChange={(e) => setForm({ ...form, state: e.target.value })}
-    //       className="border p-2 rounded"
-    //     />
-    //     <br></br>
-    //     <label htmlFor='description'>Description :</label>
-    //     <input
-    //       id='description'
-    //       // placeholder="Description"
-    //       value={form.description}
-    //       onChange={(e) => setForm({ ...form, description: e.target.value })}
-    //       className="border p-2 rounded col-span-3"
-    //     />
-
-    //     <button
-    //       onClick={save}
-    //       className="bg-black text-white px-4 py-2 rounded col-span-3"
-    //     >
-    //       {editingId ? 'Update' : 'Add'}
-    //     </button>
-    //   </div>
-
-    //   {/* List */}
-    //   <table className="w-full border">
-    //     <thead>
-    //       <tr className="bg-gray-100">
-    //         <th className="border p-2">Name</th>
-    //         <th className="border p-2">State</th>
-    //         <th className="border p-2">Actions</th>
-    //       </tr>
-    //     </thead>
-    //     <tbody>
-    //       {regions.map((r) => (
-    //         <tr key={r._id}>
-    //           <td className="border p-2 text-center">{r.name}</td>
-    //           <td className="border p-2 text-center">{r.state}</td>
-    //           <td className="border p-2 text-center">
-    //             <button
-    //               onClick={() => edit(r)}
-    //               className="text-blue-600 mr-3"
-    //             >
-    //               Edit
-    //             </button>
-    //             <button
-    //               onClick={() => remove(r._id)}
-    //               className="text-red-600"
-    //             >
-    //               Delete
-    //             </button>
-    //           </td>
-    //         </tr>
-    //       ))}
-    //     </tbody>
-    //   </table>
-    // </div>
     // {/* Form */}
     <div className="bg-white border rounded-xl p-6 mb-8">
-      <h2 className="font-semibold mb-4">
-        {editingId ? 'Edit GI Region' : 'Add GI Region'}
-      </h2>
+      <h1 className="text-2xl font-semibold mb-4">
+        {editingId ? 'Edit GI Region' : 'GI Region'}
+      </h1>
 
       <div className="grid grid-cols-2 gap-4 items-center">
         {/* Region Name */}
@@ -196,11 +124,29 @@ export default function GIRegionsPage() {
           className="border rounded-lg px-4 py-2 resize-none"
           rows={2}
         />
+        
+        {/* Image */}
+          <label className="font-medium">Category Image</label>
+
+          <input
+          key={imageInputKey}
+            type="file"
+            accept="image/*"
+            className="border p-2 rounded w-full"
+            onChange={async (e) => {
+              if (!e.target.files?.[0]) return;
+              const res = await uploadGiRegionImage(e.target.files[0]);
+              setForm(prev => ({
+                ...prev,
+                image: res.data.url,
+              }));
+            }}
+          />
 
         {/* Categories */}
         <label className="font-medium">Categories</label>
         <div className="relative">
-         
+
           {/* Trigger */}
           <div
             onClick={() => setShowCategories(!showCategories)}

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { getProducts, createProduct, updateProduct, deleteProduct } from '@/lib/products';
 import { getCategories } from '@/lib/categories';
 import { getRegions } from '@/lib/gi-regions';
+import { uploadImage } from '@/lib/upload';
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<any[]>([]);
@@ -18,6 +19,7 @@ export default function ProductsPage() {
     title: '',
     price: '',
     stock: '',
+    images: [] as string[],
     categories: [] as string[],
     giRegions: [] as string[],
     status: 'active',
@@ -38,14 +40,45 @@ export default function ProductsPage() {
     setRegions(r.data);
   };
 
+  const isFormValid = () => {
+
+    if (!form.title.trim()) return false;
+    if (!form.price || Number(form.price) <= 0) return false;
+    if (!form.stock || Number(form.stock) < 0) return false;
+
+    if (form.categories.length === 0) return false;
+    if (form.giRegions.length === 0) return false;
+
+    for (const attr of attributes) {
+      const hasKey = attr.key.trim() !== '';
+      const hasValue = attr.value.trim() !== '';
+
+      if (hasKey !== hasValue) {
+        return false;
+      }
+    }
+
+    return true;
+  };
+
   const save = async () => {
-    if (!form.title || !form.price) return;
+    if (!isFormValid()) {
+      alert('Please fill all required fields correctly');
+      return;
+    }
 
     const payload = {
       ...form,
       slug: form.title.toLowerCase().replace(/\s+/g, '-'),
       price: Number(form.price),
       stock: Number(form.stock),
+      images: form.images,
+      attributes: attributes.reduce((acc, item) => {
+        if (item.key && item.value) {
+          acc[item.key] = item.value;
+        }
+        return acc;
+      }, {} as Record<string, string>),
     };
 
     if (editingId) {
@@ -64,10 +97,12 @@ export default function ProductsPage() {
       title: '',
       price: '',
       stock: '',
+      images: [],
       categories: [],
       giRegions: [],
       status: 'active',
     });
+    setAttributes([{ key: '', value: '' }]);
   };
 
   const edit = (p: any) => {
@@ -76,10 +111,19 @@ export default function ProductsPage() {
       title: p.title,
       price: p.price,
       stock: p.stock,
+      images: p.images || [],
       categories: p.categories || [],
       giRegions: p.giRegions || [],
       status: p.status,
     });
+    setAttributes(
+      p.attributes
+        ? Object.entries(p.attributes).map(([key, value]) => ({
+          key,
+          value: value as string,
+        }))
+        : [{ key: '', value: '' }]
+    );
   };
 
   const remove = async (id: string) => {
@@ -87,6 +131,31 @@ export default function ProductsPage() {
     await deleteProduct(id);
     load();
   };
+
+  const [attributes, setAttributes] = useState([
+    { key: '', value: '' }
+  ]);
+
+  const updateAttribute = (index: number, field: 'key' | 'value', value: string) => {
+    const copy = [...attributes];
+    copy[index][field] = value;
+    setAttributes(copy);
+  };
+
+  const addAttributeRow = () => {
+    setAttributes([...attributes, { key: '', value: '' }]);
+  };
+
+  const removeAttributeRow = (index: number) => {
+    setAttributes(attributes.filter((_, i) => i !== index));
+  };
+
+  const attributesObject = attributes.reduce((acc, item) => {
+    if (item.key && item.value) {
+      acc[item.key] = item.value;
+    }
+    return acc;
+  }, {} as Record<string, string>);
 
   return (
     <div className="p-6 max-w-6xl center mx-auto">
@@ -118,6 +187,85 @@ export default function ProductsPage() {
             value={form.stock}
             onChange={e => setForm({ ...form, stock: e.target.value })}
             className="border p-2 rounded"
+          />
+        </div>
+
+        {attributes.map((attr, index) => (
+          <div
+            key={index}
+            className="grid grid-cols-2 gap-4 items-center mb-2"
+          >
+            {/* LEFT LABEL */}
+            <label className="font-medium">
+              {index === 0 ? 'Attribute' : ''}
+            </label>
+
+            {/* RIGHT INPUTS */}
+            <div className="flex gap-2 w-full">
+              <input
+                placeholder="Key"
+                value={attr.key}
+                onChange={(e) =>
+                  updateAttribute(index, 'key', e.target.value)
+                }
+                className="border px-3 py-2 rounded w-1/2"
+              />
+
+              <input
+                placeholder="Value"
+                value={attr.value}
+                onChange={(e) =>
+                  updateAttribute(index, 'value', e.target.value)
+                }
+                className="border px-3 py-2 rounded w-1/2"
+              />
+
+              <button
+                type="button"
+                onClick={addAttributeRow}
+                className="px-3 py-2 bg-green-600 text-white rounded"
+              >
+                +
+              </button>
+
+              {attributes.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => removeAttributeRow(index)}
+                  className="px-3 py-2 bg-red-600 text-white rounded"
+                >
+                  −
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+
+        {/* IMAGE UPLOAD */}
+        <div className="grid grid-cols-2 gap-4 items-center">
+          {/* LEFT LABEL */}
+          <label className="font-medium">Choose Image</label>
+
+          {/* RIGHT INPUT */}
+          <input
+            type="file"
+            accept="image/*"
+            className="border p-2 rounded w-full"
+            onChange={async (e) => {
+              if (!e.target.files?.[0]) return;
+
+              try {
+                const res = await uploadImage(e.target.files[0]);
+
+                setForm((prev) => ({
+                  ...prev,
+                  images: [...prev.images, res.data.url],
+                }));
+              } catch (err) {
+                alert('Image upload failed');
+                console.error(err);
+              }
+            }}
           />
         </div>
 
