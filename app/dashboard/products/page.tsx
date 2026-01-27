@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { getProducts, createProduct, updateProduct, deleteProduct } from '@/lib/products';
 import { getCategories } from '@/lib/categories';
 import { getRegions } from '@/lib/gi-regions';
-import { uploadImage } from '@/lib/upload';
+import { uploadProductImage } from '@/lib/upload';
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<any[]>([]);
@@ -264,7 +264,7 @@ export default function ProductsPage() {
                 if (!e.target.files?.[0]) return;
 
                 try {
-                  const res = await uploadImage(e.target.files[0]);
+                  const res = await uploadProductImage(e.target.files[0]);
 
                   setForm((prev) => ({
                     ...prev,
